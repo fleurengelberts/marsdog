@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RED MARSDOG - Woordenchat Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #110925;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+      margin: 0;
+      overflow-x: hidden;
+    }
+    h1.game-title {
+      font-size: 2.2rem;
+      margin: 10px 0;
+      color: #ff4d4d;
+      text-shadow: 0 0 10px #ff0000, 0 0 20px #ff9900;
+      letter-spacing: 2px;
+      font-weight: 900;
+    }
+    #game-container {
+      background: #1a103c;
+      border-radius: 20px;
+      padding: 20px;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 10px 30px rgba(255, 69, 0, 0.3);
+      text-align: center;
+      border: 2px solid #ff4d4d;
+      position: relative;
+    }
+    .score-board {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #fca311;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+    /* Stage & Balanceerkoord */
+    #stage {
+      position: relative;
+      height: 250px;
+      background: linear-gradient(to bottom, #090314, #1f1147);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      border: 2px solid #ff4d4d;
+    }
+    /* Bewegend Touw */
+    #rope {
+      position: absolute;
+      bottom: 50px;
+      left: 5%;
+      width: 73%;
+      height: 6px;
+      background-color: #e5e5e5;
+      border-radius: 3px;
+      box-shadow: 0 0 8px rgba(255,255,255,0.5);
+      animation: ropeSag 2.5s infinite ease-in-out alternate;
+    }
+    @keyframes ropeSag {
+      0% { transform: scaleY(1) translateY(0px); }
+      50% { transform: scaleY(1.3) translateY(3px); }
+      100% { transform: scaleY(0.9) translateY(-2px); }
+    }
+
+    /* Vlammen aan het einde */
+    .fire-zone {
+      position: absolute;
+      right: 2%;
+      bottom: 30px;
+      width: 90px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    .fire-flame {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      font-size: 65px;
+      animation: flicker 0.4s infinite alternate ease-in-out;
+      transform-origin: bottom center;
+      z-index: 1;
+    }
+    @keyframes flicker {
+      0% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 10px #ff4500); }
+      100% { transform: scale(1.15) rotate(3deg); filter: drop-shadow(0 0 20px #ffcc00); }
+    }
+
+    /* SVG Schattige Mars-Hond Container */
+    #marsdog-container {
+      position: absolute;
+      bottom: 20px;
+      right: 30px;
+      width: 60px;
+      height: 60px;
+      z-index: 2;
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* SVG Marsmannetje Container */
+    #alien-container {
+      position: absolute;
+      bottom: 52px;
+      left: 5%;
+      width: 70px;
+      height: 90px;
+      margin-left: -35px;
+      transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s ease;
+      transform-origin: bottom center;
+      user-select: none;
+      z-index: 5;
+    }
+
+    /* Wankelen bij lopen */
+    .walk {
+      animation: wobble 0.6s infinite alternate ease-in-out;
+    }
+    @keyframes wobble {
+      0% { transform: rotate(-10deg) translateY(0px); }
+      100% { transform: rotate(10deg) translateY(-4px); }
+    }
+
+    /* Blijdschapssprong */
+    .happy-jump {
+      animation: jumpUp 0.8s ease-out !important;
+    }
+    @keyframes jumpUp {
+      0% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-70px) scale(1.2) rotate(15deg); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* Val bij fout antwoord */
+    .fall {
+      animation: fallDown 1.3s forwards ease-in;
+    }
+    @keyframes fallDown {
+      0% { transform: rotate(0deg); }
+      20% { transform: rotate(-35deg) translateY(-15px); }
+      100% { transform: rotate(1080deg) translateY(350px); opacity: 0; }
+    }
+
+    /* Reddings-Animatie: Hond geknuffeld vóór de marsman */
+    .held-dog {
+      left: 77% !important;
+      bottom: 85px !important;
+      z-index: 10 !important;
+      transform: scale(1.3) !important;
+    }
+    .hero-pose {
+      left: 77% !important;
+      z-index: 8 !important;
+      transform: scale(1.3) !important;
+    }
+
+    /* Ballonnen Animaties */
+    .balloon {
+      position: absolute;
+      bottom: -80px;
+      font-size: 45px;
+      z-index: 20;
+      animation: floatUp 3s forwards ease-in;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-350px) rotate(20deg); opacity: 0; }
+    }
+
+    /* Vragen & Antwoorden */
+    .question-box {
+      font-size: 1.15rem;
+      margin-bottom: 20px;
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    button.opt-btn {
+      background-color: #231553;
+      color: white;
+      border: 2px solid #ff4d4d;
+      padding: 12px 15px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button.opt-btn:hover {
+      background-color: #ff4d4d;
+      transform: translateY(-2px);
+    }
+    
+    /* Resultaten */
+    #result-screen {
+      display: none;
+    }
+    .prize-box {
+      background: #231553;
+      border: 2px solid #fca311;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 15px;
+    }
+    .restart-btn {
+      margin-top: 20px;
+      background-color: #fca311;
+      color: #110925;
+      border: none;
+      padding: 12px 25px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1 class="game-title">🔥 RED MARSDOG 🔥</h1>
+
+<div id="game-container">
+  <div class="score-board">
+    <span>Vraag: <span id="question-num">1</span> / 40</span>
+    <span>Punten: <span id="score">0</span></span>
+  </div>
+
+  <!-- Visueel gedeelte -->
+  <div id="stage">
+    <div id="rope"></div>
+    
+    <!-- Vlammenzee -->
+    <div class="fire-zone">
+      <div class="fire-flame">🔥</div>
+    </div>
+
+    <!-- Getekende SCHATTIGE Marshond (SVG) -->
+    <div id="marsdog-container">
+      <svg viewBox="0 0 100 100" width="100%" height="100%">
+        <!-- Staartje met kwastje -->
+        <path d="M 20 55 Q 8 40 18 30" stroke="#ff4d4d" stroke-width="6" fill="none" stroke-linecap="round" />
+        <circle cx="17" cy="30" r="5" fill="#76c893" />
+        
+        <!-- Schattig Bol Lijfje -->
+        <ellipse cx="45" cy="62" rx="20" ry="16" fill="#ff4d4d" />
+        <ellipse cx="45" cy="64" rx="13" ry="10" fill="#ffccd5" />
+        
+        <!-- Korte Pootjes -->
+        <rect x="30" y="72" width="7" height="14" rx="3" fill="#e63946" />
+        <rect x="40" y="72" width="7" height="14" rx="3" fill="#e63946" />
+        <rect x="50" y="72" width="7" height="14" rx="3" fill="#e63946" />
+        <rect x="60" y="72" width="7" height="14" rx="3" fill="#e63946" />
+
+        <!-- Grote Schattige Kop -->
+        <circle cx="62" cy="38" r="21" fill="#ff4d4d" />
+        
+        <!-- Flapporen -->
+        <path d="M 48 25 Q 35 18 42 42" fill="#e63946" />
+        <path d="M 75 25 Q 88 18 81 42" fill="#e63946" />
+
+        <!-- Snuitje -->
+        <ellipse cx="68" cy="43" rx="9" ry="7" fill="#ffffff" />
+        <ellipse cx="71" cy="40" rx="3.5" ry="2.5" fill="#1d3557" />
+
+        <!-- Extra Grote Schattige Puppy Ogen -->
+        <circle cx="56" cy="34" r="6" fill="#ffffff" />
+        <circle cx="56" cy="34" r="4" fill="#1d3557" />
+        <circle cx="54.5" cy="32.5" r="1.5" fill="#ffffff" />
+        
+        <circle cx="68" cy="34" r="6" fill="#ffffff" />
+        <circle cx="68" cy="34" r="4" fill="#1d3557" />
+        <circle cx="66.5" cy="32.5" r="1.5" fill="#ffffff" />
+
+        <!-- Blozende Wangetjes -->
+        <circle cx="52" cy="42" r="3" fill="#ff8fa3" opacity="0.8" />
+      </svg>
+    </div>
+
+    <!-- Getekend Marsmannetje met Aanpasbare Outfits (SVG) -->
+    <div id="alien-container" class="walk">
+      <svg viewBox="0 0 100 130" width="100%" height="100%">
+        <!-- Voelsprieten -->
+        <line x1="35" y1="25" x2="25" y2="5" stroke="#76c893" stroke-width="4" stroke-linecap="round" />
+        <circle cx="23" cy="5" r="5" fill="#ffb703" />
+        
+        <line x1="65" y1="25" x2="75" y2="5" stroke="#76c893" stroke-width="4" stroke-linecap="round" />
+        <circle cx="77" cy="5" r="5" fill="#ffb703" />
+
+        <!-- Lichaampje -->
+        <ellipse cx="50" cy="95" rx="18" ry="22" fill="#52b788" />
+        
+        <!-- Benen -->
+        <line x1="42" y1="112" x2="38" y2="128" stroke="#40916c" stroke-width="5" stroke-linecap="round" />
+        <line x1="58" y1="112" x2="62" y2="128" stroke="#40916c" stroke-width="5" stroke-linecap="round" />
+
+        <!-- OUTFIT UPGRADE 2: Tuinbroek (verschijnt bij 30+ vragen) -->
+        <g id="overalls" style="display: none;">
+          <!-- Broekje -->
+          <path d="M 32 90 L 68 90 L 68 112 L 32 112 Z" fill="#2a6f97" />
+          <!-- Schouderbanden -->
+          <line x1="38" y1="78" x2="40" y2="90" stroke="#014f86" stroke-width="4" />
+          <line x1="62" y1="78" x2="60" y2="90" stroke="#014f86" stroke-width="4" />
+          <!-- Gele Knopen -->
+          <circle cx="40" cy="91" r="2.5" fill="#ffb703" />
+          <circle cx="60" cy="91" r="2.5" fill="#ffb703" />
+          <!-- Zakje op de borst -->
+          <rect x="44" y="94" width="12" height="10" rx="2" fill="#014f86" />
+        </g>
+
+        <!-- Balanseer-armen -->
+        <path id="arm-left" d="M 33 88 Q 15 80 5 95" stroke="#52b788" stroke-width="5" fill="none" stroke-linecap="round" />
+        <path id="arm-right" d="M 67 88 Q 85 80 95 95" stroke="#52b788" stroke-width="5" fill="none" stroke-linecap="round" />
+
+        <!-- Extra GROOT Hoofd -->
+        <ellipse cx="50" cy="45" rx="36" ry="30" fill="#76c893" />
+        
+        <!-- Ogen -->
+        <circle cx="36" cy="42" r="11" fill="#ffffff" />
+        <circle cx="36" cy="42" r="5" fill="#1d3557" />
+        <circle cx="64" cy="42" r="11" fill="#ffffff" />
+        <circle cx="64" cy="42" r="5" fill="#1d3557" />
+
+        <!-- Oog-glimmers -->
+        <circle cx="34" cy="40" r="2" fill="#ffffff" />
+        <circle cx="62" cy="40" r="2" fill="#ffffff" />
+
+        <!-- Mond -->
+        <path d="M 40 62 Q 50 72 60 62" stroke="#1d3557" stroke-width="3" fill="none" stroke-linecap="round" />
+
+        <!-- OUTFIT UPGRADE 1: Gekke Feesthoed (verschijnt bij 10+ vragen) -->
+        <g id="funny-hat" style="display: none;">
+          <!-- Feesthoed punt -->
+          <polygon points="50,2 30,22 70,22" fill="#ff0054" />
+          <!-- Gele Stippen op de hoed -->
+          <circle cx="45" cy="14" r="2.5" fill="#ffb703" />
+          <circle cx="55" cy="10" r="2" fill="#ffb703" />
+          <circle cx="52" cy="18" r="2" fill="#ffb703" />
+          <!-- Pluisje op de punt -->
+          <circle cx="50" cy="2" r="5" fill="#ffb703" />
+          <!-- Rand van de hoed -->
+          <rect x="26" y="20" width="48" height="4" rx="2" fill="#ffb703" />
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Speelscherm -->
+  <div id="quiz-screen">
+    <div class="question-box" id="question">Vraag laden...</div>
+    <div class="options-grid" id="options"></div>
+  </div>
+
+  <!-- Eindscherm -->
+  <div id="result-screen">
+    <h2>REDDINGSMISSIE VOLTOOID! 🐾</h2>
+    <p>Je hebt in totaal <strong id="final-score">0</strong> punten gehaald!</p>
+    <div class="prize-box">
+      <h3>Jouw Beloning:</h3>
+      <p id="prize-text" style="font-size: 1.2rem; line-height: 1.5;"></p>
+    </div>
+    <button class="restart-btn" onclick="startGame()">Opnieuw Spelen</button>
+  </div>
+</div>
+
+<script>
+  // DATABASE VAN ALLE 40 WOORDEN (80 VRAGEN)
+  const alleVragenDatabase = [
+    // LES 1
+    { vraag: "Wat betekent het woord **'accentueren'**?", opties: ["Benadrukken, beter laten uitkomen.", "Iets kleiner maken.", "Iets snel verbergen.", "Een verhaal vertellen."], correct: 0 },
+    { vraag: "Vul in: 'De leraar wilde dat belangrijke punt nog extra ________.'", opties: ["accentueren", "verfijnen", "symboliseren", "creëren"], correct: 0 },
+    { vraag: "Wat betekent het woord **'de animatie'**?", opties: ["Een soort tekenfilm waarin beelden snel achter elkaar bewegen.", "Een geschreven boek.", "Een stilstaande foto.", "Een soort muziekstuk."], correct: 0 },
+    { vraag: "Vul in: 'In de bioscoop keken we naar een prachtige ________.'", opties: ["animatie", "context", "diagnoos", "illustratie"], correct: 0 },
+    { vraag: "Wat betekent het woord **'de cartoon'**?", opties: ["Een getekende mop.", "Een lang stripboek.", "Een serieuze krant.", "Een schilderij."], correct: 0 },
+    { vraag: "Vul in: 'In de krant staat elke dag een grappige ________.'", opties: ["cartoon", "stijl", "animatie", "aanleiding"], correct: 0 },
+    { vraag: "Wat betekent het woord **'de context'**?", opties: ["De omgeving waarin iets zich afspeelt, de omstandigheden.", "Het einde van een boek.", "De hoofdpersoon van een verhaal.", "De titel van een strip."], correct: 0 },
+    { vraag: "Vul in: 'Je moet de betekenis van het woord bekijken in de juiste ________.'", opties: ["context", "identiteit", "stijl", "reputatie"], correct: 0 },
+    { vraag: "Wat betekent het woord **'creëren'**?", opties: ["Scheppen, iets maken of bedenken.", "Iets kapotmaken.", "Iets kopiëren.", "Iets opzoeken."], correct: 0 },
+    { vraag: "Vul in: 'De kunstenaar wist een prachtig nieuw schilderij te ________.'", opties: ["creëren", "accentueren", "interpreteren", "kwetsen"], correct: 0 },
+    { vraag: "Wat betekent het woord **'cursief'**?", opties: ["Schuingedrukt.", "Vetgedrukt.", "Onderstreept.", "In hoofdletters."], correct: 0 },
+    { vraag: "Vul in: 'Belangrijke woorden staan in de tekst vaak ________ gedrukt.'", opties: ["cursief", "gedetailleerd", "grafisch", "specifiek"], correct: 0 },
+    { vraag: "Wat betekent het woord **'de dialoog'**?", opties: ["Een gesprek tussen twee mensen.", "Een toespraak voor één persoon.", "Een ruzie.", "Een stilte."], correct: 0 },
+    { vraag: "Vul in: 'De twee strippersonen voerden een grappige ________.'", opties: ["dialoog", "animatie", "editie", "herdruk"], correct: 0 },
+    { vraag: "Wat betekent het woord **'gedetailleerd'**?", opties: ["Met de kleinste bijzonderheden erbij.", "Heel kort en snel.", "Zonder tekeningen.", "Onduidelijk."], correct: 0 },
+    { vraag: "Vul in: 'De tekenaar maakte een heel ________ overzicht van het kasteel.'", opties: ["gedetailleerd", "cursief", "geestig", "volwaardig"], correct: 0 },
+    { vraag: "Wat betekent **'de gezichtsuitdrukking'**?", opties: ["De manier waarop je kijkt, wat je met je gezicht laat zien.", "Een masker dragen.", "Je gezicht wassen.", "Iets navertellen."], correct: 0 },
+    { vraag: "Vul in: 'Aan zijn boze ________ kon je zien dat hij niet blij was.'", opties: ["gezichtsuitdrukking", "identiteit", "reputatie", "aanleiding"], correct: 0 },
+    { vraag: "Wat betekent het woord **'grafisch'**?", opties: ["Als het met tekenen te maken heeft.", "Als het met muziek te maken heeft.", "Als het heel oud is.", "Als het heel duur is."], correct: 0 },
+    { vraag: "Vul in: 'Hij volgt een opleiding tot ________ vormgever.'", opties: ["grafisch", "educatief", "hardnekkig", "roekeloos"], correct: 0 },
+    { vraag: "Wat betekent **'de identiteit'**?", opties: ["De persoonlijkheid, dat wat je onderscheidt van anderen.", "Je adres.", "Je favoriete eten.", "Een geheim."], correct: 0 },
+    { vraag: "Vul in: 'Elk mens heeft een unieke ________.'", opties: ["identiteit", "strekking", "editie", "aanleiding"], correct: 0 },
+    { vraag: "Wat betekent het woord **'illustreren'**?", opties: ["Tekenen. Versieren of toelichten met plaatjes.", "Een verhaal voorlezen.", "Een boek schrijven.", "Iets gummen."], correct: 0 },
+    { vraag: "Vul in: 'De schrijver vroeg de kunstenaar om het boek te ________.'", opties: ["illustreren", "accentueren", "creëren", "combineren"], correct: 0 },
+    { vraag: "Wat betekent **'het lettertype'**?", opties: ["De lettersoort, de manier waarop de letter getekend is.", "De grootte van een pagina.", "Het alfabet.", "Een type computer."], correct: 0 },
+    { vraag: "Vul in: 'Voor het opschrift koos de ontwerper een stoer ________.'", opties: ["lettertype", "assortiment", "cartoons", "context"], correct: 0 },
+    { vraag: "Wat betekent **'samenhangen'**?", opties: ["Met elkaar te maken hebben.", "Aan een touw hangen.", "Los van elkaar staan.", "Mekaar niet begrijpen."], correct: 0 },
+    { vraag: "Vul in: 'De twee gebeurtenissen bleken nauw met elkaar te ________.'", opties: ["samenhangen", "combineren", "interpreteren", "verbeelden"], correct: 0 },
+    { vraag: "Wat betekent het woord **'de stijl'**?", opties: ["De manier waarop je iets doet.", "Het materiaal waarvan iets gemaakt is.", "De snelheid van bewegen.", "De prijs van een artikel."], correct: 0 },
+    { vraag: "Vul in: 'De striptekenaar heeft een heel herkenbare eigen ________.'", opties: ["stijl", "editie", "context", "aanleiding"], correct: 0 },
+    { vraag: "Wat betekent **'de strekking'**?", opties: ["Dat wat je met iets bedoelt, het idee dat je duidelijk wilt maken.", "De lengte van een tekst.", "Het uitrekken van je spieren.", "Een samenvatting."], correct: 0 },
+    { vraag: "Vul in: 'Begrijp je de ________ van dit verhaal?'", opties: ["strekking", "animatie", "identiteit", "reputatie"], correct: 0 },
+    { vraag: "Wat betekent **'symboliseren'**?", opties: ["Voorstellen. Een hartje symboliseert bijvoorbeeld verliefdheid.", "Iets namaken.", "Iets verbergen.", "Iets tekenen met potlood."], correct: 0 },
+    { vraag: "Vul in: 'Een duif wordt vaak gebruikt om vrede te ________.'", opties: ["symboliseren", "accentueren", "verfijnen", "combineren"], correct: 0 },
+    { vraag: "Wat betekent het woord **'treffend'**?", opties: ["Opvallend en raak.", "Misgelopen.", "Heel saai.", "Per ongeluk."], correct: 0 },
+    { vraag: "Vul in: 'Hij gaf een heel ________ voorbeeld dat iedereen meteen begreep.'", opties: ["treffend", "cursief", "roekeloos", "hardnekkig"], correct: 0 },
+    { vraag: "Wat betekent het woord **'verfijnen'**?", opties: ["Uitwerken. De precieze details aanbrengen.", "Grover maken.", "Snel afmaken.", "Wissen."], correct: 0 },
+    { vraag: "Vul in: 'De kunstenaar bleef de schets steeds verder ________.'", opties: ["verfijnen", "kwetsen", "symboliseren", "onderbreken"], correct: 0 },
+    { vraag: "Wat betekent het woord **'weergeven'**?", opties: ["Laten horen of laten zien.", "Iets teruggeven aan de eigenaar.", "Opnieuw proberen.", "Weggooien."], correct: 0 },
+    { vraag: "Vul in: 'De tekening weet de sfeer van de stad prachtig weer te ________.'", opties: ["geven", "maken", "creëren", "combineren"], correct: 0 },
+
+    // LES 5
+    { vraag: "Wat betekent **'de aanleiding'**?", opties: ["De reden, de oorzaak van iets.", "Het einde van een ruzie.", "Een nieuw begin.", "Een uitnodiging."], correct: 0 },
+    { vraag: "Vul in: 'De grap van de leraar was de ________ voor veel gelach.'", opties: ["aanleiding", "reputatie", "editie", "context"], correct: 0 },
+    { vraag: "Wat betekent **'het assortiment'**?", opties: ["Alle verschillende soorten artikelen die in een winkel te koop zijn.", "Een grote doos.", "Een verzameling van dezelfde spullen.", "Een prijskaartje."], correct: 0 },
+    { vraag: "Vul in: 'De snoepwinkel heeft een heel groot ________.'", opties: ["assortiment", "lettertype", "herdruk", "strekking"], correct: 0 },
+    { vraag: "Wat betekent het woord **'beseffen'**?", opties: ["Inzien, in de gaten hebben, je bewust zijn van iets.", "Iets vergeten.", "Iets uitleggen.", "Iets twijfelen."], correct: 0 },
+    { vraag: "Vul in: 'Pas later begon hij te ________ hoe slim dat besluit was.'", opties: ["beseffen", "combineren", "interpreteren", "kwetsen"], correct: 0 },
+    { vraag: "Wat betekent het woord **'combineren'**?", opties: ["Samenvoegen, koppelen, met elkaar in verband brengen.", "Uit elkaar halen.", "Iets weggooien.", "Iets vergelijken."], correct: 0 },
+    { vraag: "Vul in: 'Je kunt deze kledingstukken heel mooi ________.'", opties: ["combineren", "accentueren", "verfijnen", "signeren"], correct: 0 },
+    { vraag: "Wat betekent het woord **'complex'**?", opties: ["Ingewikkeld.", "Heel makkelijk.", "Snel klaar.", "Klein."], correct: 0 },
+    { vraag: "Vul in: 'De puzzel bleek een stuk meer ________ dan gedacht.'", opties: ["complex", "geestig", "volwaardig", "treffend"], correct: 0 },
+    { vraag: "Wat betekent **'de editie'**?", opties: ["De uitgave, de manier waarop een boek is uitgegeven.", "Een hoofdstuk.", "Een pagina.", "De prijs van een krant."], correct: 0 },
+    { vraag: "Vul in: 'Ik spaar de speciale gouden ________ van dit stripboek.'", opties: ["editie", "aanleiding", "context", "reputatie"], correct: 0 },
+    { vraag: "Wat betekent het woord **'educatief'**?", opties: ["Leerzaam, bedoeld om van te leren.", "Saaie muziek.", "Heel duur.", "Gevaarlijk."], correct: 0 },
+    { vraag: "Vul in: 'We speelden een heel leuk én ________ spel op school.'", opties: ["educatief", "roekeloos", "complex", "cursief"], correct: 0 },
+    { vraag: "Wat betekent het woord **'geestig'**?", opties: ["Grappig.", "Eng.", "Flauw.", "Stil."], correct: 0 },
+    { vraag: "Vul in: 'Hij maakte een heel ________ opmerking waar iedereen om lachte.'", opties: ["geestig", "hardnekkig", "gedetailleerd", "specifiek"], correct: 0 },
+    { vraag: "Wat betekent **'op de hak nemen'**?", opties: ["Voor de gek houden, een grapje uithalen met iemand.", "Iets kapotmaken met je schoen.", "Iemand helpen.", "Iets heel serieus nemen."], correct: 0 },
+    { vraag: "Vul in: 'De cabaretier wist de politici op een grappige manier op de ________ te nemen.'", opties: ["hak", "voet", "neus", "hand"], correct: 0 },
+    { vraag: "Wat betekent **'de herdruk'**?", opties: ["Een nieuwe druk van een boek dat al eerder is uitgegeven.", "Een fout in het boek.", "Een poster.", "Een eerste editie."], correct: 0 },
+    { vraag: "Vul in: 'Omdat het boek zo populair was, kwam er al snel een ________.'", opties: ["herdruk", "cartoon", "dialoog", "aanleiding"], correct: 0 },
+    { vraag: "Wat betekent **'interpreteren'**?", opties: ["Uitleg geven of verklaren hoe je iets opvat.", "Iets vertalen.", "Iets naschilderen.", "Iets begrijpen."], correct: 0 },
+    { vraag: "Vul in: 'Iedereen kan dit kunstwerk op zijn eigen manier ________.'", opties: ["interpreteren", "accentueren", "combineren", "symboliseren"], correct: 0 },
+    { vraag: "Wat betekent het woord **'kwetsen'**?", opties: ["Beledigen, iemands gevoelens pijnlijk treffen.", "Iemand troosten.", "Iemand blij maken.", "Iemand roepen."], correct: 0 },
+    { vraag: "Vul in: 'Het was niet mijn bedoeling om jou met die opmerking te ________.'", opties: ["kwetsen", "beseffen", "signeren", "verbeelden"], correct: 0 },
+    { vraag: "Wat betekent **'de reputatie'**?", opties: ["De goede of slechte naam waaronder iets of iemand bekend is.", "Je achternaam.", "Je leeftijd.", "De baak van je werk."], correct: 0 },
+    { vraag: "Vul in: 'Dat restaurant heeft een heel goede ________.'", opties: ["reputatie", "aanleiding", "identiteit", "strekking"], correct: 0 },
+    { vraag: "Wat betekent het woord **'signeren'**?", opties: ["Je handtekening zetten.", "Een foto maken.", "Een brief posten.", "Iets schilderen."], correct: 0 },
+    { vraag: "Vul in: 'De bekende schrijver kwam na afloop zijn nieuwe boek ________.'", opties: ["signeren", "creëren", "illustreren", "accentueren"], correct: 0 },
+    { vraag: "Wat betekent het woord **'specifiek'**?", opties: ["In het bijzonder, speciaal.", "In het algemeen.", "Heel snel.", "Samen met anderen."], correct: 0 },
+    { vraag: "Vul in: 'Hij zocht naar een heel ________ soort potlood.'", opties: ["specifiek", "complex", "educatief", "treffend"], correct: 0 },
+    { vraag: "Wat betekent **'de spot drijven met'**?", opties: ["Iemand of iets belachelijk maken, bespotten.", "Snel over het water varen.", "Iets opruimen.", "Met iemand spelen."], correct: 0 },
+    { vraag: "Vul in: 'Het is niet leuk om de spot te ________ met klasgenoten.'", opties: ["drijven", "maken", "vliegen", "draaien"], correct: 0 },
+    { vraag: "Wat betekent **'in trek zijn'**?", opties: ["Populair zijn, als veel mensen het willen hebben.", "Veel spullen sjouwen.", "Hard lopen.", "Aan een touw trekken."], correct: 0 },
+    { vraag: "Vul in: 'Die nieuwe sportschoenen zijn erg in ________ bij de jeugd.'", opties: ["trek", "stijl", "vorm", "de buurt"], correct: 0 },
+    { vraag: "Wat betekent het woord **'verantwoord'**?", opties: ["Veilig, zonder risico's.", "Heel gevaarlijk.", "Onduidelijk.", "Snel en roekeloos."], correct: 0 },
+    { vraag: "Vul in: 'Het is niet ________ om zonder helm te gaan wielrennen.'", opties: ["verantwoord", "complex", "geestig", "specifiek"], correct: 0 },
+    { vraag: "Wat betekent het woord **'verbeelden'**?", opties: ["Laten zien, uitbeelden, voorstellen.", "Een verhaaltje vertellen.", "Iets vergeten.", "Iets dromen."], correct: 0 },
+    { vraag: "Vul in: 'In het toneelstuk wisten ze het verhaal prachtig te ________.'", opties: ["verbeelden", "signeren", "accentueren", "kwetsen"], correct: 0 },
+    { vraag: "Wat betekent het woord **'volwaardig'**?", opties: ["Zonder gebreken, als het alle kwaliteiten bezit.", "Half afgemaakt.", "Nog heel jong.", "Slecht gemaakt."], correct: 0 },
+    { vraag: "Vul in: 'Na jaren oefenen werd hij een ________ lid van het orkest.'", opties: ["volwaardig", "educatief", "complex", "cursief"], correct: 0 }
+  ];
+
+  let geselecteerdeVragen = [];
+  let huidigeVraagIndex = 0;
+  let score = 0;
+  let alienPositie = 5;
+
+  function hussel(array) {
+    let kopie = [...array];
+    for (let i = kopie.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [kopie[i], kopie[j]] = [kopie[j], kopie[i]];
+    }
+    return kopie;
+  }
+
+  function startGame() {
+    // Selecteer willekeurig 40 vragen
+    const gehusseld = hussel(alleVragenDatabase);
+    geselecteerdeVragen = gehusseld.slice(0, 40);
+
+    huidigeVraagIndex = 0;
+    score = 0;
+    alienPositie = 5;
+
+    document.getElementById('score').innerText = score;
+    document.getElementById('question-num').innerText = 1;
+    document.getElementById('quiz-screen').style.display = 'block';
+    document.getElementById('result-screen').style.display = 'none';
+
+    // Verberg kleding bij de start
+    document.getElementById('funny-hat').style.display = 'none';
+    document.getElementById('overalls').style.display = 'none';
+
+    // Reset hond en marsmannetje
+    const dog = document.getElementById('marsdog-container');
+    dog.className = '';
+    dog.style.bottom = '20px';
+    dog.style.right = '30px';
+    dog.style.left = 'auto';
+
+    resetAlien();
+    toonVraag();
+  }
+
+  function resetAlien() {
+    const alien = document.getElementById('alien-container');
+    alien.className = 'walk';
+    alien.style.left = alienPositie + '%';
+  }
+
+  function toonVraag() {
+    document.getElementById('question-num').innerText = huidigeVraagIndex + 1;
+    const v = geselecteerdeVragen[huidigeVraagIndex];
+    document.getElementById('question').innerHTML = v.vraag;
+
+    // MAAK HET JUISTE ANTWOORD EN DE OPTIES RANDOM (HUSSELEN)
+    const juisteTekst = v.opties[v.correct];
+    const gehusseldeOpties = hussel(v.opties);
+    const nieuwJuistIndex = gehusseldeOpties.indexOf(juisteTekst);
+
+    const optionsDiv = document.getElementById('options');
+    optionsDiv.innerHTML = '';
+
+    gehusseldeOpties.forEach((optie, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn';
+      btn.innerText = optie;
+      btn.onclick = () => controleerAntwoord(index === nieuwJuistIndex);
+      optionsDiv.appendChild(btn);
+    });
+  }
+
+  function controleerAntwoord(isCorrect) {
+    const alien = document.getElementById('alien-container');
+
+    if (isCorrect) {
+      // GOED ANTWOORD
+      score += 2;
+      document.getElementById('score').innerText = score;
+
+      // Stap vooruit op het koord
+      const stapGrootte = 70 / 40;
+      alienPositie += stapGrootte;
+      alien.style.left = alienPositie + '%';
+
+      const beantwoordAantal = huidigeVraagIndex + 1;
+
+      // KLEDING UPGRADES CHECK
+      if (beantwoordAantal >= 10) {
+        document.getElementById('funny-hat').style.display = 'block';
+      }
+      if (beantwoordAantal >= 30) {
+        document.getElementById('overalls').style.display = 'block';
+      }
+
+      // Check voor Blijdschapssprong + Ballonnen elke 10 vragen
+      if (beantwoordAantal % 10 === 0) {
+        maakSprongEnBallonnen();
+      } else {
+        volgendeVraag();
+      }
+    } else {
+      // FOUT ANTWOORD
+      alien.className = 'fall';
+
+      setTimeout(() => {
+        resetAlien();
+        volgendeVraag();
+      }, 1300);
+    }
+  }
+
+  function maakSprongEnBallonnen() {
+    const alien = document.getElementById('alien-container');
+    alien.classList.add('happy-jump');
+
+    // 2 zwevende ballonnen
+    latenBallonZweven('🎈', '30%');
+    latenBallonZweven('🎈', '60%');
+
+    setTimeout(() => {
+      alien.classList.remove('happy-jump');
+      volgendeVraag();
+    }, 1200);
+  }
+
+  function latenBallonZweven(emoji, xPos) {
+    const b = document.createElement('div');
+    b.className = 'balloon';
+    b.innerText = emoji;
+    b.style.left = xPos;
+    document.getElementById('stage').appendChild(b);
+
+    setTimeout(() => { b.remove(); }, 3000);
+  }
+
+  function volgendeVraag() {
+    huidigeVraagIndex++;
+    if (huidigeVraagIndex < geselecteerdeVragen.length) {
+      setTimeout(toonVraag, 300);
+    } else {
+      setTimeout(speelReddingsAnimatie, 600);
+    }
+  }
+
+  function speelReddingsAnimatie() {
+    const alien = document.getElementById('alien-container');
+    const dog = document.getElementById('marsdog-container');
+
+    // Marsmannetje stapt tot in het vuur
+    alien.style.left = '77%';
+
+    setTimeout(() => {
+      // Hondje wordt opgepakt en VOOR het marsmannetje geknuffeld
+      alien.classList.add('hero-pose');
+      dog.classList.add('held-dog');
+
+      setTimeout(toonEindscherm, 2000);
+    }, 700);
+  }
+
+  function toonEindscherm() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    document.getElementById('final-score').innerText = score;
+
+    let prijs = "";
+
+    if (score >= 80) {
+      prijs = "🏆 **MAXIMALE SCORE! (80 PUNTEN)**<br><br>🎉 **Jouw Prijs:** Een keer patat, pannenkoeken, poffertjes, pizza of sushi eten! 🍟🥞🍕🍣";
+    } else if (score >= 60) {
+      prijs = "🥈 **GEWELDIG! (60+ PUNTEN)**<br><br>📺 **Jouw Prijs:** Een kwartiertje extra TV kijken of gamen! 🎮";
+    } else if (score >= 40) {
+      prijs = "🥉 **GOED GEDAAN! (40+ PUNTEN)**<br><br>🤗 **Jouw Prijs:** Een dikke vette knuffel van je vader en/of moeder!";
+    } else {
+      prijs = "💪 **BLIJVEN OEFENEN!**<br><br>Je hebt al een paar punten gehaald! Speel nog een keer om 40 punten of meer te halen voor een mooie prijs!";
+    }
+
+    document.getElementById('prize-text').innerHTML = prijs;
+  }
+
+  // Start de game
+  startGame();
+</script>
+
+</body>
+</html>
